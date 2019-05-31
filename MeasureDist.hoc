@@ -1,0 +1,50 @@
+forsec "a*_" {nseg=10}
+access soma
+distance()
+
+func Length_Of_Prox_Dend(){local i, legnth
+	legnth = 0
+	forsec "a*_" {
+		if (distance(0)<ProxDef){
+			i=0.0
+   			while (distance(i)<ProxDef){
+	  			i+=0.1
+				if (i>1){break}
+			}
+   			i-=0.1			
+			legnth+=distance(i)-distance(0)
+		}
+	}
+	//print "legnth of proximal tree = ",legnth
+	return legnth
+}
+
+func Length_Of_Dist_Dend(){local i, legnth
+	legnth=0
+	forsec "a*_" {
+		if (distance(1)>ProxDef){
+			i=1
+			while (distance(i)>ProxDef){
+				i=i-0.1
+				if (i<0){break}
+			}
+   			i=i+0.1
+			legnth+=distance(1)-distance(i)
+		}
+	}
+	//print "legnth of dustal tree =",legnth
+	return legnth
+}
+
+func Length_Of_Tree(){local length
+	legnth=0
+	forsec "a*_"{
+		//nseg=1
+		legnth+=L
+	}
+	//print "legnth of entire cell =" ,legnth
+	return legnth
+}
+
+LENOFPROXTREE = Length_Of_Prox_Dend() 
+LENOFDISTTREE = Length_Of_Tree()-LENOFPROXTREE

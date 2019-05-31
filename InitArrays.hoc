@@ -1,0 +1,182 @@
+/***************************
+initializing Lists for all synapses, numbers 1-4 correspond to 
+LGN, L4, L6, Inhibition. the 0 place in the array is left empty.
+(If array has only 4 cells, it is only for the excitatory synapses)
+Distribution is divided to synapses on the soma (none in the case of
+ssc), proximal synapses (under 50 um from soma) and distal synapses
+(over 50 microns from soma). See ahmed et al. 1994.
+*****************************/
+
+/*-------------------------------------------
+calculating the number of synapses on soma:
+---------------------------------------------*/
+double NumOfSomaSyn[5]
+proc InitNumbersOfSomaSyn(){	local j,ExcSomaSin
+	
+	//excitatory synapses:
+	ExcSomaSin = KnownExcSyn * DensOfSomaExcSyn			
+	for j=1,3{																			
+		NumOfSomaSyn[j] = int ( ExcSomaSin * RatioSomaExcSyn[j] )
+	}
+	
+	//inhibitory synapses:
+	NumOfSomaSyn[4] = int ( KnownInSyn * DensOfSomaInSyn )
+}
+InitNumbersOfSomaSyn()
+
+/*-------------------------------------------
+calculating the number of synapses on the proximal dendrites:
+---------------------------------------------*/
+double NumOfProxSyn[5]
+proc InitNumbersOfProxSyn(){	local j,ExcProxSin
+	
+	//excitatory synapses:
+	ExcProxSin = KnownExcSyn * DensOfProxExcSyn * ( LENOFPROXTREE / 100 )
+	for j=1,3{																			
+		NumOfProxSyn[j] = int ( ExcProxSin * RatioProxExcSyn[j] )
+	}
+	
+	//inhibitory synapses:
+	NumOfProxSyn[4] = int ( KnownInSyn * DensOfProxInSyn * ( LENOFPROXTREE / 100 ) ) 
+}
+InitNumbersOfProxSyn()
+
+/*-------------------------------------------
+calculating the number of synapses on the distal dendrites:
+---------------------------------------------*/
+double NumOfDistSyn[5]
+proc InitNumbersOfDistSyn(){	local j,ExcDistSin
+	
+	//excitatory synapses:
+	ExcDistSin = KnownExcSyn * DensOfDistExcSyn * ( LENOFDISTTREE / 100 )
+	for j=1,3{																			
+		NumOfDistSyn[j] = int ( ExcDistSin * RatioDistExcSyn[j] )
+	}
+	
+	//inhibitory synapses:
+	NumOfDistSyn[4]	= int ( KnownInSyn * DensOfDistInSyn * ( LENOFDISTTREE / 100 ) )	 
+}
+InitNumbersOfDistSyn()
+
+/*---------------------------------------
+Defining Lists of synapses, assuming nseg 1 for all sections 
+--------------------------------------*/
+//List of VectorSynapses, sectionRefs, and codes to relate each
+//section to its VectorSynapse:
+objref VSynList,SecLists,SectionCodeToVsynList
+VSynList 			  = new List()
+SecLists			  = new List()
+SectionCodeToVsynList = new List()
+
+/*----------------------------------------------------------
+Initialyzing section arrays of proximal and distal dendrites for
+distribution of synapses
+----------------------------------------------------------*/
+proc InitLSyns(){local i,ch localobj vsyn,sec,ProxSectionCodeToVsyn,DistSectionCodeToVsyn,SomaCodeToVsyn,ProxSecList,DistSecList,SomaSecList
+	i=0
+//keep numbers of sections as in forsec "a*_", to be able to relate
+//a section to the VectorSynapse object on that section (soma code not relevant for ssc)
+	ProxSectionCodeToVsyn = new Vector()		
+	DistSectionCodeToVsyn = new Vector()		
+	SomaCodeToVsyn		  = new Vector()		
+
+//SecionRref to all sections:
+	SomaSecList	= new List()
+	ProxSecList	= new List()
+	DistSecList	= new List()
+
+	soma{
+		SomaSecList.append(new SectionRef())
+		vsyn = new VectorSynNS(0.5)
+		VSynList.append(vsyn)	
+		distance()
+	}
+	SomaCodeToVsyn.append(0)
+	
+	forsec "a*_"{														//excluding soma & axon						
+		vsyn = new VectorSynNS(0.5)
+		i+=1	
+		VSynList.append(vsyn)
+		if (distance(0.5)<ProxDef){							//proximal section
+			ProxSecList.append(new SectionRef())
+			ProxSectionCodeToVsyn.append(i)
+		} else {															//distal section
+			for ch=0,int(L/5)-1{						
+/*L/5 is indicative of the length of the section. e.g. 100 microns section will have 20 representations, whereas 20 microns section will have only 4. that way the ratio of synapses/100 microns is kept*/
+				DistSecList.append(new SectionRef())
+				DistSectionCodeToVsyn.append(i)
+			}
+		}//eof else
+	}
+
+	SectionCodeToVsynList.append(SomaCodeToVsyn)
+	SectionCodeToVsynList.append(ProxSectionCodeToVsyn)
+	SectionCodeToVsynList.append(DistSectionCodeToVsyn)
+
+	SecLists.append(SomaSecList)
+	SecLists.append(ProxSecList)
+	SecLists.append(DistSecList)
+
+}
+InitLSyns()
+
+
+/*---------------------------------------------
+number of synaptic contacts per axon of each source:
+---------------------------------------------*/
+double SynContsPerAxons[5]		
+SynContsPerAxons[1]=4		
+SynContsPerAxons[2]=3		
+SynContsPerAxons[3]=2		
+SynContsPerAxons[4]=5		
+
+/**********************************
+lists of netsim and netcon objects
+**********************************/
+objref NSLists,NCLists
+NSLists = new List()
+NCLists = new List()	
+
+proc Init4InputSourcesLists(){localobj empty,LGNlist,L4list,L6list,INlist
+//a lists for each input source. used be the next procedure (InitStimLists)
+	empty	= new List()
+	LGNlist	= new List()
+	L4list	= new List()
+	L6list	= new List()
+	INlist	= new List()
+	$o1.append(empty)
+	$o1.append(LGNlist)
+	$o1.append(L4list)
+	$o1.append(L6list)
+	$o1.append(INlist)
+}
+
+proc InitStimLists(){localobj NSSomaList,NSProxList,NSDistList,NCSomaList,NCProxList,NCDistList
+	
+	NSSomaList = new List()				//netstim for soma synapses
+	Init4InputSourcesLists(NSSomaList)
+	
+	NSProxList = new List()				//    " 	  "   proximal   "
+	Init4InputSourcesLists(NSProxList)
+	
+	NSDistList = new List()				//    " 	  "   distal   "
+	Init4InputSourcesLists(NSDistList)
+	
+	NCSomaList = new List()				//netcon for soma synapses
+	Init4InputSourcesLists(NCSomaList)	
+	
+	NCProxList = new List()				//    " 	  "   proximal   "
+	Init4InputSourcesLists(NCProxList)
+	
+	NCDistList = new List()				//    " 	  "   distal   "
+	Init4InputSourcesLists(NCDistList)
+	
+	NSLists.append(NSSomaList)
+	NSLists.append(NSProxList)
+	NSLists.append(NSDistList)
+	
+	NCLists.append(NCSomaList)
+	NCLists.append(NCProxList)
+	NCLists.append(NCDistList)
+}
+InitStimLists()

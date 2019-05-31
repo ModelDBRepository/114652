@@ -1,0 +1,109 @@
+//detailed Spiny Stellate cell model from cat V1L4
+
+xopen("j3886d_sdt.hoc")
+xopen("axon.hoc")
+create_axon()
+
+/******************
+dividing dendritic tree to proximal and distal parts as in Anderson et al. 1994 (under and over 50 um from soma, respectively). soma.L=10, hence ProxDef=60. the following hoc file has functions  that measure the length and other morphological details of the proximal and distal parts of the tree. total length of sscell before incorporation of spine area is 5570 um. (Proximal length is 524 um)
+*********************/
+ProxDef=60
+xopen("MeasureDist.hoc")
+
+/********************
+inserting passive properties:
+********************/
+forall {
+	Ra=200
+	insert pas
+	g_pas=1/12000
+	e_pas=-65
+	cm=1
+	nseg=1			//for a more accurate computation use: nseg=int(L/20)+1}
+}
+
+/**********************
+voltage dependent conductances in soma and axon (dendrites are passive):
+*********************/
+soma{
+  insert iapnew
+  gnabar_iapnew=0.15	//equivalent to 1500 pS/um^2
+  gkbar_iapnew=0.07
+  insert iA
+  gkbar_iA=0.01
+  actvha_iA=50
+  inactvha_iA=60
+  insert icalnew
+  gcabar_icalnew=0.0045
+  insert icnew
+  gkbar_icnew=0.0095
+}
+
+hill{
+  insert iapnew
+  gnabar_iapnew=0.1	
+  gkbar_iapnew=0.07
+  insert iA
+  gkbar_iA=0.01
+  actvha_iA=50
+  inactvha_iA=60
+  insert icalnew
+  gcabar_icalnew=0.0045
+  insert icnew
+  gkbar_icnew=0.0095
+}
+
+iseg{
+  insert iapnew
+  gnabar_iapnew=0.1	
+  gkbar_iapnew=0.07
+  insert iA
+  gkbar_iA=0.01
+  actvha_iA=50
+  inactvha_iA=60
+  insert icalnew
+  gcabar_icalnew=0.0045
+  insert icnew
+  gkbar_icnew=0.0095
+}
+naactvha_iapnew=28
+kactvha_iapnew=28
+naiactvha_iapnew=33
+caactvha_icalnew=-10
+
+/*************************************
+following files define the number and distribution of synapses on the dendritic tree
+************************************/
+//Lists with # of synapses, specific to ssc:
+xopen("InitSSCArrays.hoc")	
+
+//Define lists of synapses, netstims and netcons (based on "InitSSCArrays.hoc").
+xopen("InitArrays.hoc")
+
+//Define methods to let user initialize the synapses and netstims:
+xopen ("InitSynapses.hoc")
+
+//adjusting dendrites to include spines area. performed here since
+//all previous calculation have to be performed 
+//before changing lengths of dendritic tree:
+adjust_for_spines()
+
+
+/***************************************
+simulation for example:
+***************************************/
+/*newPlotV(0.5)
+for j=1,4{							//four input sources
+	for i=0,2{						//soma, proximal, distal
+		//WriteSynLoc(j,i)
+		ReadSynapses(j,i)
+		SetInputSourceLocationFrequency(j,i,0,40,1)
+	}
+}
+nrncontrolmenu()
+v_init=-65
+access soma
+distance()
+tstop=200
+init()
+run()

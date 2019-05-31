@@ -1,0 +1,44 @@
+/*---------------------------
+defining # of excitatory and inhibitory synapses per 100 microns 
+of proximal & distal ssc dendrtie, and the ratio of identified 
+input sources. arrays of 5 numbers correspond to synapses from:
+0 - empty
+1 - LGN
+2 - other SSC from L4
+3 - L6 pyramids
+4 - Inhibitory synapses from basket cell
+These correspnd to Stratford et al. 1996 whoc clasfified inputs to
+class1 to class 3 for the excitatory inputs.
+(If array has only 4 cells, it is only for the three excitatory 
+inputs).
+------------------------------*/
+
+//only about 80% of the synapses were accounted for by ahmed et al. 1994:
+KnownExcSyn = 0.79				//excitatory
+KnownInSyn  = 0.84				//inhibitory
+
+/*****************************
+//# of excitatory and inhibitory synappses on soma and per 100 
+microns of proximal and distal dendrites:
+****************************/
+DensOfSomaExcSyn = 0 			//excitatory synapses on soma
+DensOfSomaInSyn  = 0  			//inhibitory synapses on soma
+DensOfProxExcSyn = 62			//excitatory synapses per proximal dendrite
+DensOfProxInSyn  = 33			//inhibitory synapses per proximal dendrite
+DensOfDistExcSyn = 117			//excitatory synapses per distal dendrite
+DensOfDistInSyn  = 5			//inhibitory synapses per distal dendrite
+
+//# of synapses on the soma is 0 for the ssc, the following is for compatability with basket cell:
+double RatioSomaExcSyn[5]
+
+//ratio of each input source out of the proximal excitatory synapses:
+double RatioProxExcSyn[4]
+RatioProxExcSyn[1] = 0.15		//LGN
+RatioProxExcSyn[2] = 0.35		//L4
+RatioProxExcSyn[3] = 0.5		//L6
+
+//ratio of each input source out of the distal excitatory synapses:
+double RatioDistExcSyn[4]
+RatioDistExcSyn[1] = 0.07		//thalmaic afferents
+RatioDistExcSyn[2] = 0.29		//othe L4 input
+RatioDistExcSyn[3] = 0.64		//L6 input

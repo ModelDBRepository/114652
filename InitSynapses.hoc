@@ -1,0 +1,166 @@
+/**********************************************************
+Define methods to let user initialize the synapses and netstims.
+The file is desinged to allow also the intialization of a basket
+cell (bc).
+************************************************************/
+
+/*---------------------------------------------------------
+WriteSynLoc writes into files that specify synapse locations:
+--------------------------------------------------------*/
+proc WriteSynLoc(){local i,loc,size,type,location localobj ve,LocArray,rnd,fp
+	
+	type 	 = $1 
+	location = $2
+	ve 		 = WRSynFile(type,location,fp)
+	LocArray = new Vector(ve.x(0))
+	rnd		 = new Random()
+	
+	for i=0,ve.x(0)-1{
+		LocArray.x(i) = int ( rnd.uniform ( 0 , ve.x (1) ) )
+	}
+	
+	fp.wopen()
+	LocArray.printf(fp)
+	fp.close()
+}
+
+/**************************************
+WRSynFile generates a file by the name of the cell type (ssc),
+the location on the dendritic tree (soma, prox, dist) 
+and the type of synapse (Cl1=LGN; CL2=L4; CL3=L6; CL4=inhibition). 
+it also returns a vector (ve) with the number of synapses (ve.x(0))
+of the input source specified in $1 & $2. ve.x(1) is the number of 
+distal/proximal sections. the file opened here can be used to wrtie
+synapse locations (in WriteSynLoc) or to read them (in ReadSynapses)
+********************************************/
+strdef s,r
+obfunc WRSynFile(){local nos,nsyns,type,location localobj ve,seclist
+	type	 = $1
+	location = $2
+	ve		 = new Vector(2)
+	seclist	 = SecLists.o(location)
+	
+	//string s with type of neuron:
+	if ( NumOfSomaSyn[1] == 0 )   {
+		sprint(s,"ssc")
+	} else {
+		sprint(s,"bc")
+	}
+	
+	if (location==0)  {					//soma
+		ve.x(0)	= NumOfSomaSyn[type]
+		ve.x(1)	= 1
+		sprint(r,"%s\SomaCl%g",s,$1)
+	}	else if ( location == 1 ) {		//proximal
+	
+		ve.x(0)	= NumOfProxSyn[type]
+		ve.x(1)	= seclist.count()
+		sprint(r,"%s\ProxCl%g",s,$1)
+	} 	else if ( location == 2 ) {		//distal
+		
+		ve.x(0)	= NumOfDistSyn[type]
+		ve.x(1)	= seclist.count()
+		sprint(r,"%s\DistCl%g",s,$1)
+	} 	else {print "unknown location"}
+	
+	//print "#ofsyn (ve.x(0))=",$o3.x(0),", #ofsections (ve.x(1))=",$o3.x(1)
+	$o3	= new File(r)
+	s	= ""
+	r	= ""
+	return ve
+}
+
+
+/****************************************
+read the synapse locations file (from WRSynFile), and initialize 
+VectorSynapses. ve.x(0) is the number of synapses in the array. 
+ve.x(1) is the location of the synapses (code of sections)
+****************************************/
+proc ReadSynapses(){local loc,scpa,i  localobj ve,ns,nslist,nclist,seclist,codevec,vsyn,nc,fp,tmp  
+	type=$1
+	location=$2
+	
+	//get number of synapses in ve.x(0) and open file with synapse locations:
+	ve=WRSynFile(type,location,fp)		
+	fp.ropen()			
+	
+	//# of synaptic contacts:
+	scpa=SynContsPerAxons[type]			
+	
+	//list of netstims:
+	nslist=NSLists.o(location).o(type)	
+	
+	//list of netcons:
+	nclist=NCLists.o(location).o(type)	
+	
+	//list of sections:
+	seclist=SecLists.o(location)		
+	
+	//vector of section codes to Vsyn:
+	codevec=SectionCodeToVsynList.o(location)	
+	
+	for i = 0, ve.x(0)-1 {												
+		
+		//get the location specified in the file and go to section:
+		loc	= fp.scanvar()
+		seclist.o(loc).sec{						
+		
+			//print i,"\t",secname(),"\t",distance(0.5)
+			
+			//get the Vsysn there, and add a synapse of type type:
+			vsyn = VSynList.o( codevec.x(loc) )				
+			vsyn.add(type)											
+
+			//get corresponding netstim (make one if needed):
+			if ( (i%scpa) ==0 ){										
+				ns = new NetStim(0.5)
+				SetNetStim(ns,1e9,1e9,1)					
+				ns.number = 20000								
+				nslist.append(ns)									
+			}
+			
+			//connect new synapses to nnetstim:
+			nc = new NetCon(ns,vsyn,0,0,vsyn.syncount-1)
+			nclist.append(nc)
+			//print "ns and nc: ",ns,"\t",nc,"\t",vsyn.syncount-1,"\n"
+		}
+	}
+	fp.close()
+	//print "read synapses type", type, ", location",location
+}
+
+//Set the parameters of the netstim ($o1)
+proc SetNetStim(){
+	$o1.start	 = $2
+	$o1.interval = $3
+	$o1.noise	 = $4
+}
+
+
+/*---------------------------------------------------------------
+set netstim parameters for $1 synapses at location $2
+--------------------------------------------------------------*/
+proc SetInputSourceLocationFrequency(){local i,start,interval,noise localobj nslist
+	type	 = $1
+	location = $2
+	start	 = $3
+	interval = $4
+	noise	 = $5
+	nslist	 = NSLists.o(location).o(type)	
+	
+	for i = 0, nslist.count()-1{
+		SetNetStim(nslist.o(i),start,interval,noise)
+	}
+}
+
+/*---------------------------------------------------------------
+set input parameters for input source $1 at all locations
+--------------------------------------------------------------*/
+proc SetInputSourceFrequency(){local i, start, interval, noise
+	start	 = $2
+	interval = $3
+	noise	 = $4
+	for i = 0, 2{
+		SetInputSourceLocationFrequency($1,i,start,interval,noise)
+	}
+}
